@@ -1,0 +1,183 @@
+{
+  "info": {
+    "name": "CalClone Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["/"]
+        }
+      }
+    },
+    {
+      "name": "List Events",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/events",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["events"]
+        }
+      }
+    },
+    {
+      "name": "Get Event By Slug",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/events/slug/:slug",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["events", "slug", ":slug"]
+        }
+      }
+    },
+    {
+      "name": "Create Event",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"30 min Meeting\",\n  \"description\": \"Quick sync\",\n  \"duration_minutes\": 30,\n  \"slug\": \"30-min-meeting\",\n  \"buffer_minutes\": 5\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/events",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["events"]
+        }
+      }
+    },
+    {
+      "name": "Update Event",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"30 min Meeting (updated)\",\n  \"duration_minutes\": 30,\n  \"slug\": \"30-min-meeting\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/events/:id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["events", ":id"]
+        }
+      }
+    },
+    {
+      "name": "Set Availability",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"day_of_week\": 1,\n  \"start_time\": \"09:00\",\n  \"end_time\": \"17:00\",\n  \"timezone\": \"UTC\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/availability",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["availability"]
+        }
+      }
+    },
+    {
+      "name": "List Availability",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/availability",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["availability"]
+        }
+      }
+    },
+    {
+      "name": "Get Slots",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/slots?event_type_id=1&date=2026-01-10",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["slots"],
+          "query": [
+            { "key": "event_type_id", "value": "1" },
+            { "key": "date", "value": "2026-01-10" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Booking",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"event_type_id\": 1,\n  \"booking_date\": \"2026-01-10\",\n  \"start_time\": \"09:00\",\n  \"end_time\": \"09:30\",\n  \"booker_name\": \"Alice\",\n  \"booker_email\": \"alice@example.com\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/bookings",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["bookings"]
+        }
+      }
+    },
+    {
+      "name": "List Bookings",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/bookings",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["bookings"]
+        }
+      }
+    },
+    {
+      "name": "Cancel Booking",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/bookings/:id",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["bookings", ":id"]
+        }
+      }
+    }
+  ]
+}
