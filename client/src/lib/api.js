@@ -2,8 +2,9 @@
 import axios from "axios";
 
 // Backend ka address (Make sure backend chal raha ho port 5000 pe)
+// FIX: Added "/api" to baseURL matches server.js routes
 const api = axios.create({
-  baseURL: "http://localhost:5000",
+  baseURL: "http://localhost:5000/api",
 });
 
 // --- Admin Functions ---
