@@ -1,19 +1,16 @@
 const express = require("express");
 const router = express.Router();
 
-const {
-  createBooking,
-  getBookings,
-  cancelBooking,
-} = require("../controllers/bookingController");
+router.get("/", (req, res) => {
+  res.json({ message: "Booking route working ✅" });
+});
 
-// Public booking
-router.post("/", createBooking);
+router.post("/", (req, res) => {
+  res.json({ message: "Create booking working ✅" });
+});
 
-// Admin dashboard - list bookings
-router.get("/", getBookings);
-
-// Cancel booking
-router.delete("/:id", cancelBooking);
+router.delete("/:id", (req, res) => {
+  res.json({ message: "Cancel booking working ✅" });
+});
 
 module.exports = router;

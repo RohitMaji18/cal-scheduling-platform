@@ -3,92 +3,84 @@ const pool = require("./database");
 
 async function seed() {
   try {
-    console.log("Running DB seed...");
+    console.log("🌱 Starting Database Seed...");
 
-    // Minimal safety: unique index to prevent identical start-time duplicates
-    await pool.query(
-      "CREATE UNIQUE INDEX IF NOT EXISTS bookings_unique_start ON bookings(event_type_id, booking_date, start_time)"
-    );
-
-    // 1) Ensure default user
-    const userEmail = "owner@example.com";
-    let res = await pool.query("SELECT id FROM users WHERE email = $1", [
-      userEmail,
-    ]);
-    let userId;
-    if (res.rows.length > 0) {
-      userId = res.rows[0].id;
-      console.log("Found user id", userId);
-    } else {
-      res = await pool.query(
-        "INSERT INTO users(name, email) VALUES($1, $2) RETURNING id",
-        ["Default User", userEmail]
-      );
-      userId = res.rows[0].id;
-      console.log("Inserted user id", userId);
-    }
-
-    // 2) Ensure an event type
-    const slug = "30-min-meeting";
-    res = await pool.query("SELECT id FROM event_types WHERE slug = $1", [
-      slug,
-    ]);
+    // --- 1. Create Default Event Type ("30 Min Meeting") ---
+    const eventSlug = "30-min-meeting";
     let eventId;
-    if (res.rows.length > 0) {
-      eventId = res.rows[0].id;
-      console.log("Found event id", eventId);
-    } else {
-      res = await pool.query(
-        "INSERT INTO event_types(user_id, title, description, duration_minutes, slug, buffer_minutes) VALUES($1,$2,$3,$4,$5,$6) RETURNING id",
-        [userId, "30 min Meeting", "Quick sync", 30, slug, 5]
-      );
-      eventId = res.rows[0].id;
-      console.log("Inserted event id", eventId);
-    }
 
-    // 3) Ensure availability (Monday 09:00-17:00, UTC)
-    res = await pool.query(
-      "SELECT id FROM availability WHERE user_id = $1 AND day_of_week = $2 AND start_time = $3 AND end_time = $4",
-      [userId, 1, "09:00", "17:00"]
+    // Check if event already exists
+    const eventCheck = await pool.query(
+      "SELECT id FROM event_types WHERE slug = $1",
+      [eventSlug]
     );
-    if (res.rows.length > 0) {
-      console.log("Availability exists");
+
+    if (eventCheck.rows.length > 0) {
+      eventId = eventCheck.rows[0].id;
+      console.log(`🔹 Event '${eventSlug}' already exists (ID: ${eventId})`);
     } else {
-      await pool.query(
-        "INSERT INTO availability(user_id, day_of_week, start_time, end_time, timezone) VALUES($1,$2,$3,$4,$5)",
-        [userId, 1, "09:00", "17:00", "UTC"]
+      // Create new event
+      const newEvent = await pool.query(
+        `INSERT INTO event_types (title, description, duration_minutes, slug, buffer_minutes, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        ["30 Min Meeting", "A quick video call.", 30, eventSlug, 5, true]
       );
-      console.log("Inserted availability");
+      eventId = newEvent.rows[0].id;
+      console.log(`✅ Created Event: '${eventSlug}' (ID: ${eventId})`);
     }
 
-    // 4) Ensure one sample booking
-    res = await pool.query(
+    // --- 2. Set Default Availability (Monday 9am - 5pm) ---
+    // Check if Monday (day_of_week = 1) exists
+    const availCheck = await pool.query(
+      "SELECT id FROM availability WHERE day_of_week = $1 AND start_time = $2",
+      [1, "09:00"]
+    );
+
+    if (availCheck.rows.length > 0) {
+      console.log("🔹 Availability for Monday already exists");
+    } else {
+      // Create availability
+      await pool.query(
+        `INSERT INTO availability (day_of_week, start_time, end_time, timezone)
+         VALUES ($1, $2, $3, $4)`,
+        [1, "09:00", "17:00", "UTC"]
+      );
+      console.log("✅ Set Availability: Monday 09:00 - 17:00 UTC");
+    }
+
+    // --- 3. Create Sample Booking ---
+    const bookingDate = "2026-02-20"; // Future date
+    const bookingCheck = await pool.query(
       "SELECT id FROM bookings WHERE event_type_id = $1 AND booking_date = $2 AND start_time = $3",
-      [eventId, "2026-01-10", "09:00"]
+      [eventId, bookingDate, "10:00"]
     );
-    if (res.rows.length > 0) {
-      console.log("Sample booking exists");
+
+    if (bookingCheck.rows.length > 0) {
+      console.log("🔹 Sample booking already exists");
     } else {
+      // Create booking
       await pool.query(
-        "INSERT INTO bookings(event_type_id, booking_date, start_time, end_time, booker_name, booker_email, status) VALUES($1,$2,$3,$4,$5,$6,$7)",
+        `INSERT INTO bookings (event_type_id, booking_date, start_time, end_time, booker_name, booker_email, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           eventId,
-          "2026-01-10",
-          "09:00",
-          "09:30",
+          bookingDate,
+          "10:00",
+          "10:30",
           "Alice",
           "alice@example.com",
           "confirmed",
         ]
       );
-      console.log("Inserted sample booking");
+      console.log(`✅ Created Sample Booking for ${bookingDate}`);
     }
 
-    console.log("DB seed completed successfully.");
+    console.log("✨ Database seed completed successfully!");
   } catch (err) {
-    console.error("DB seed error:", err.message || err);
+    console.error("❌ Seed Error:", err.message || err);
   } finally {
-    await pool.end();
+    await pool.end(); // Close DB connection
   }
 }
 

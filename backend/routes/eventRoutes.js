@@ -9,19 +9,10 @@ const {
   getEventBySlug,
 } = require("../controllers/eventController");
 
-// Create event
 router.post("/", createEvent);
-
-// Get all events
 router.get("/", getEvents);
-
-// Public: get event by slug
 router.get("/slug/:slug", getEventBySlug);
-
-// Delete event
-router.delete("/:id", deleteEvent);
-
-// Update event
 router.put("/:id", updateEvent);
+router.delete("/:id", deleteEvent);
 
 module.exports = router;

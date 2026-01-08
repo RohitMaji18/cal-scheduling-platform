@@ -3,23 +3,21 @@ const { DateTime } = require("luxon");
 
 /**
  * GET AVAILABLE SLOTS
- * query params: event_type_id, date (YYYY-MM-DD)
+ * -------------------
+ * Calculates free time slots for a given date and event type.
+ * Query Params: event_type_id, date (YYYY-MM-DD)
  */
 const getAvailableSlots = async (req, res) => {
   try {
     const { event_type_id, date } = req.query;
 
     if (!event_type_id || !date) {
-      return res.status(400).json({
-        message: "event_type_id and date are required",
-      });
+      return res
+        .status(400)
+        .json({ message: "event_type_id and date are required" });
     }
 
-    // Determine day of week according to availability timezone
-    // We'll fetch availability rows (which include timezone) and compute the weekday
-    // from the provided date using that timezone.
-
-    // 1. Get event details
+    // 1. Fetch Event Details (Duration & Buffer)
     const eventResult = await pool.query(
       "SELECT duration_minutes, buffer_minutes FROM event_types WHERE id = $1 AND is_active = true",
       [event_type_id]
@@ -30,82 +28,79 @@ const getAvailableSlots = async (req, res) => {
     }
 
     const { duration_minutes, buffer_minutes } = eventResult.rows[0];
-    const slotDuration = duration_minutes + buffer_minutes;
+    const totalSlotDuration = duration_minutes + buffer_minutes;
 
-    // 2. Get availability for the day
+    // 2. Fetch Availability Rules (Working Hours)
     const availabilityResult = await pool.query(
       "SELECT start_time, end_time, timezone, day_of_week FROM availability"
     );
 
-    if (availabilityResult.rows.length === 0) {
-      return res.json([]);
-    }
-
-    // Find availability rows matching the weekday in their timezone
+    // 3. Match Date to Availability Rule
+    // We need to check which availability rule applies to the requested date
+    // considering the timezone stored in the rule.
     const matchingAvailability = availabilityResult.rows.find((av) => {
       try {
         const dt = DateTime.fromISO(date, { zone: av.timezone });
-        const luxonWeekday = dt.weekday; // 1 (Mon) - 7 (Sun)
-        const avWeekday = av.day_of_week; // 0 (Sun) - 6 (Sat)
-        const computed = luxonWeekday === 7 ? 0 : luxonWeekday; // map 7->0
+        const luxonWeekday = dt.weekday; // Luxon: 1 (Mon) - 7 (Sun)
+        const avWeekday = av.day_of_week; // DB: 0 (Sun) - 6 (Sat)
+
+        // Convert Luxon Sunday (7) to DB Sunday (0)
+        const computed = luxonWeekday === 7 ? 0 : luxonWeekday;
+
         return computed === avWeekday;
       } catch (e) {
         return false;
       }
     });
 
+    // If no availability rule matches this day, return empty slots
     if (!matchingAvailability) return res.json([]);
 
-    const availability = matchingAvailability;
-
-    // Helper: time string → minutes
+    // 4. Generate All Possible Time Slots
     const toMinutes = (time) => {
       const [h, m] = time.split(":").map(Number);
       return h * 60 + m;
     };
 
-    const startMinutes = toMinutes(availability.start_time);
-    const endMinutes = toMinutes(availability.end_time);
+    const startMinutes = toMinutes(matchingAvailability.start_time);
+    const endMinutes = toMinutes(matchingAvailability.end_time);
 
-    let slots = [];
+    let potentialSlots = [];
     for (
       let t = startMinutes;
       t + duration_minutes <= endMinutes;
-      t += slotDuration
+      t += totalSlotDuration
     ) {
-      slots.push(t);
+      potentialSlots.push(t);
     }
 
-    // 3. Get already booked slots
+    // 5. Fetch Existing Bookings for that Day
     const bookedResult = await pool.query(
-      `
-      SELECT start_time
-      FROM bookings
-      WHERE event_type_id = $1
-        AND booking_date = $2
-        AND status = 'confirmed'
-    `,
+      `SELECT start_time FROM bookings 
+       WHERE event_type_id = $1 AND booking_date = $2 AND status = 'confirmed'`,
       [event_type_id, date]
     );
 
-    const bookedMinutes = bookedResult.rows.map((b) => toMinutes(b.start_time));
-
-    // 4. Remove booked slots
-    const availableSlots = slots.filter(
-      (slot) => !bookedMinutes.includes(slot)
+    const bookedTimesInMinutes = bookedResult.rows.map((b) =>
+      toMinutes(b.start_time)
     );
 
-    // Convert minutes → HH:MM
+    // 6. Filter Out Booked Slots
+    const freeSlots = potentialSlots.filter(
+      (slot) => !bookedTimesInMinutes.includes(slot)
+    );
+
+    // 7. Format Slots back to "HH:MM"
     const formatTime = (mins) => {
       const h = String(Math.floor(mins / 60)).padStart(2, "0");
       const m = String(mins % 60).padStart(2, "0");
       return `${h}:${m}`;
     };
 
-    res.json(availableSlots.map(formatTime));
+    res.json(freeSlots.map(formatTime));
   } catch (error) {
-    console.error("SLOT ERROR:", error);
-    res.status(500).json({ message: "Failed to get slots" });
+    console.error("SLOT CALCULATION ERROR:", error);
+    res.status(500).json({ message: "Failed to get available slots" });
   }
 };
 

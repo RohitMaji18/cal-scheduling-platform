@@ -1,27 +1,43 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-
 const pool = require("./database");
-const eventRoutes = require("./routes/eventRoutes");
-const availabilityRoutes = require("./routes/availabilityRoutes");
-const slotRoutes = require("./routes/slotRoutes");
-const bookingRoutes = require("./routes/bookingRoutes");
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
+// --- Middleware ---
 app.use(cors());
 app.use(express.json());
 
+// --- Routes ---
+
+const availabilityRoutes = require("./routes/availabilityRoutes");
+const bookingRoutes = require("./routes/bookingRoutes");
+
+const eventRoutes = require("./routes/eventRoutes");
+const slotRoutes = require("./routes/slotRoutes");
+// --- Mount Routes ---
+app.use("/api/availability", availabilityRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/events", eventRoutes);
+app.use("/api/slots", slotRoutes);
+
+// --- Health Check ---
 app.get("/", (req, res) => {
-  res.send("Backend is running");
+  res.send("Backend is running & healthy! 🚀");
 });
 
-app.use("/events", eventRoutes);
-app.use("/availability", availabilityRoutes);
-app.use("/slots", slotRoutes);
-app.use("/bookings", bookingRoutes);
+// --- DB Check ---
+pool.query("SELECT NOW()", (err) => {
+  if (err) {
+    console.error("❌ Database connection failed:", err);
+  } else {
+    console.log("✅ Database connected successfully");
+  }
+});
 
-app.listen(5000, () => {
-  console.log("Server running on port 5000");
+// --- Start Server ---
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

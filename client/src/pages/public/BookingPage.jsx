@@ -11,19 +11,30 @@ import {
 } from "lucide-react";
 import { fetchEventBySlug, fetchSlots } from "../../lib/api";
 
-// 1. IMPORT STYLE (Yeh Grid banayega, isse mat hatana)
+// Import standard CSS for the calendar to ensure proper layout
 import "react-day-picker/dist/style.css";
 
+// Import custom hook for dynamic title
+import { usePageTitle } from "../../hooks/usePageTitle";
+
 export default function BookingPage() {
+  // --- 1. Hooks & State ---
   const { slug } = useParams();
   const navigate = useNavigate();
 
   const [event, setEvent] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [slots, setSlots] = useState([]);
+
+  // Loading & Error States
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [error, setError] = useState(null);
 
+  // --- 2. Dynamic Title ---
+  // If event exists, show "Title | Cal Scheduling", otherwise "Select a Date"
+  usePageTitle(event ? event.title : "Select a Date");
+
+  // --- 3. Event Fetching ---
   useEffect(() => {
     fetchEventBySlug(slug)
       .then((res) => {
@@ -36,26 +47,31 @@ export default function BookingPage() {
       });
   }, [slug]);
 
+  // --- 4. Date Selection & Slot Fetching ---
+
   const handleDateSelect = async (date) => {
     setSelectedDate(date);
+
+    // Only fetch slots if a valid date is selected and event data is loaded
     if (date && event) {
       setLoadingSlots(true);
-      setSlots([]);
+      setSlots([]); // Clear previous slots
       try {
         const dateStr = format(date, "yyyy-MM-dd");
         const res = await fetchSlots(event.id, dateStr);
         setSlots(res.data);
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching slots:", err);
       } finally {
         setLoadingSlots(false);
       }
     } else {
-      setSlots([]);
+      setSlots([]); // Clear slots if deselected
     }
   };
 
-  // Custom Arrows (Dark Mode)
+  // --- 5. Custom Components (Dark Mode Arrows) ---
+
   const CustomHeader = ({
     displayMonth,
     onPreviousClick,
@@ -84,6 +100,8 @@ export default function BookingPage() {
     </div>
   );
 
+  // --- 6. Render ---
+
   if (error)
     return (
       <div className="flex items-center justify-center min-h-screen text-white bg-black">
@@ -99,27 +117,30 @@ export default function BookingPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4 font-sans text-white bg-black">
-      {/* 2. STYLE OVERRIDES (Layout nahi chedenge, sirf Colors badlenge) */}
+      {/* CUSTOM CSS STYLES 
+         This <style> block overrides default 'react-day-picker' styles 
+         to match the Dark Theme and Square button design.
+      */}
       <style>{`
-        /* Calendar Container Reset */
+        /* Reset Container Margins */
         .rdp { margin: 0; }
         
-        /* Table Layout (Grid Fix) */
+        /* Table Layout Fixes */
         .rdp-month { background: transparent; }
         .rdp-table { max-width: 100%; border-collapse: collapse; }
         
-        /* Headings (Mo, Tu, We) */
+        /* Header Cell Styling (MO, TU, WE...) */
         .rdp-head_cell { color: #71717a; font-weight: 400; font-size: 0.75rem; text-transform: uppercase; padding-bottom: 0.5rem; }
 
-        /* BUTTON DESIGN (Rounded Square, Dark Gray) */
+        /* DAY BUTTON DESIGN (Rounded Square, Dark Gray) */
         .rdp-day {
            height: 40px;
            width: 40px;
-           border-radius: 6px; /* Rounded Square */
-           background-color: #27272a; /* Zinc-800 (Dark Gray) */
-           color: #d4d4d8; /* Light Text */
-           border: 2px solid transparent; /* Border space */
-           margin: 1px; /* Gap between boxes */
+           border-radius: 6px; 
+           background-color: #27272a; /* Zinc-800 */
+           color: #d4d4d8; 
+           border: 2px solid transparent; 
+           margin: 1px; 
            font-weight: 500;
            font-size: 0.9rem;
         }
@@ -127,7 +148,7 @@ export default function BookingPage() {
         /* Hover Effect (White Border) */
         .rdp-day:hover:not(.rdp-day_disabled):not(.rdp-day_selected) {
            border-color: white !important;
-           background-color: #27272a !important; /* Keep dark bg */
+           background-color: #27272a !important; 
            color: white !important;
         }
 
@@ -139,7 +160,7 @@ export default function BookingPage() {
            border: none;
         }
 
-        /* Today (Simple Bold, No Blue) */
+        /* Today (Simple Bold) */
         .rdp-day_today:not(.rdp-day_selected) {
            color: white;
            font-weight: 900;
@@ -152,8 +173,9 @@ export default function BookingPage() {
         }
       `}</style>
 
+      {/* Main Layout Grid */}
       <div className="bg-black w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl shadow-black/50 min-h-[600px]">
-        {/* LEFT PANEL */}
+        {/* LEFT PANEL: Event Info */}
         <div className="flex flex-col p-8 border-b md:border-b-0 md:border-r border-zinc-800">
           <button
             onClick={() => navigate(-1)}
@@ -195,22 +217,24 @@ export default function BookingPage() {
             disabled={{ before: new Date() }}
             showOutsideDays
             components={{ Head: CustomHeader }}
-            // ClassNames hata diye taaki layout na toote, style tag sambhal lega
           />
         </div>
 
-        {/* RIGHT PANEL: Slots */}
+        {/* RIGHT PANEL: Time Slots */}
         <div className="p-8 overflow-y-auto max-h-[600px] bg-black relative">
           {selectedDate ? (
             <div className="flex flex-col h-full animate-fade-in">
               <h3 className="sticky top-0 z-10 py-2 mb-6 text-lg font-semibold text-white bg-black">
                 {format(selectedDate, "EEEE, d MMMM")}
               </h3>
+
               {loadingSlots ? (
+                // Loading Spinner
                 <div className="flex justify-center flex-1 py-20">
                   <div className="w-8 h-8 border-b-2 border-white rounded-full animate-spin"></div>
                 </div>
               ) : slots.length > 0 ? (
+                // Slots Grid
                 <div className="grid content-start flex-1 grid-cols-1 gap-3">
                   {slots.map((time) => (
                     <button
@@ -233,12 +257,14 @@ export default function BookingPage() {
                   ))}
                 </div>
               ) : (
+                // Empty State
                 <div className="flex items-center justify-center flex-1 py-20 text-lg text-center text-zinc-500">
                   No slots available.
                 </div>
               )}
             </div>
           ) : (
+            // Initial State
             <div className="flex items-center justify-center h-full text-lg text-zinc-500">
               Select a date to view available times.
             </div>

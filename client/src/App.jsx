@@ -1,54 +1,78 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AdminLayout from "./layout/AdminLayout";
 
-// All Pages
+// Import Pages
 import Dashboard from "./pages/admin/Dashboard";
 import Availability from "./pages/admin/Availability";
 import Bookings from "./pages/admin/Bookings";
-
 import BookingPage from "./pages/public/BookingPage";
 import BookingForm from "./pages/public/BookingForm";
 
-// Simple Success Page
-const SuccessPage = () => (
-  <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 text-center max-w-md">
-      <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-        <svg
-          className="w-8 h-8"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-      </div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">
-        Booking Confirmed!
-      </h1>
-      <p className="text-gray-500 mb-6">
-        You will receive a confirmation email shortly.
-      </p>
-      <a
-        href="/"
-        className="text-black font-medium underline hover:text-gray-700"
-      >
-        Go back home
-      </a>
-    </div>
-  </div>
-);
+// Import Custom Hook
+import { usePageTitle } from "./hooks/usePageTitle";
 
+/**
+ * SuccessPage Component
+ * ---------------------
+ * Displays a confirmation message after a successful booking.
+ * Styling: Adapted for Dark Mode to match the app theme.
+ */
+const SuccessPage = () => {
+  // Set dynamic browser tab title
+  usePageTitle("Booking Confirmed");
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-black">
+      <div className="bg-[#111] p-8 rounded-xl shadow-2xl border border-gray-800 text-center max-w-md w-full">
+        {/* Success Icon */}
+        <div className="flex items-center justify-center w-16 h-16 mx-auto mb-6 text-green-500 border rounded-full bg-green-900/20 border-green-900/50">
+          <svg
+            className="w-8 h-8"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </div>
+
+        {/* Text Content */}
+        <h1 className="mb-3 text-2xl font-bold text-white">
+          Booking Confirmed!
+        </h1>
+        <p className="mb-8 text-gray-400">
+          You will receive a confirmation email shortly with the meeting
+          details.
+        </p>
+
+        {/* Action Button */}
+        <a
+          href="/"
+          className="inline-block w-full px-4 py-3 font-bold text-black transition bg-white rounded-full hover:bg-gray-200"
+        >
+          Go back home
+        </a>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * App Component
+ * -------------
+ * Main entry point for the React application.
+ * Manages routing for both Admin (Dashboard) and Public (Booking) views.
+ */
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Admin Section */}
+        {/* --- ADMIN SECTION (Protected by Layout) --- */}
         <Route
           path="/dashboard"
           element={
@@ -74,13 +98,17 @@ function App() {
           }
         />
 
-        {/* Redirects */}
+        {/* --- REDIRECTS --- */}
+        {/* Default route redirects to Dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" />} />
 
-        {/* Public Section */}
+        {/* --- PUBLIC SECTION --- */}
+
+        {/* Success Page */}
         <Route path="/success" element={<SuccessPage />} />
 
-        {/* Dynamic Booking Routes (Keep at bottom) */}
+        {/* Dynamic Booking Routes */}
+        {/* Note: Parameters like :slug match any path, so they come last */}
         <Route path="/:slug" element={<BookingPage />} />
         <Route path="/:slug/book" element={<BookingForm />} />
       </Routes>

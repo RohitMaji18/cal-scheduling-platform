@@ -2,7 +2,8 @@ const pool = require("../database");
 
 /**
  * CREATE BOOKING
- * table: bookings
+ * --------------
+ * Creates a new appointment. Checks for overlaps to prevent double-booking.
  */
 const createBooking = async (req, res) => {
   try {
@@ -15,6 +16,7 @@ const createBooking = async (req, res) => {
       booker_email,
     } = req.body;
 
+    // 1. Validate Inputs
     if (
       !event_type_id ||
       !booking_date ||
@@ -23,12 +25,13 @@ const createBooking = async (req, res) => {
       !booker_name ||
       !booker_email
     ) {
-      return res.status(400).json({
-        message: "All booking fields are required",
-      });
+      return res
+        .status(400)
+        .json({ message: "All booking fields are required" });
     }
 
-    // Prevent overlapping bookings for the same event/date
+    // 2. Check for Overlaps (Double Booking Protection)
+    // We check if any confirmed booking exists in the requested time range.
     const overlapCheckQuery = `
       SELECT 1 FROM bookings
       WHERE event_type_id = $1
@@ -51,8 +54,9 @@ const createBooking = async (req, res) => {
         .json({ message: "This time range overlaps an existing booking" });
     }
 
+    // 3. Create Booking
     const query = `
-      INSERT INTO bookings
+      INSERT INTO bookings 
       (event_type_id, booking_date, start_time, end_time, booker_name, booker_email, status)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
@@ -69,39 +73,35 @@ const createBooking = async (req, res) => {
     ];
 
     const result = await pool.query(query, values);
-
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error("CREATE BOOKING ERROR:", error);
-
-    // double booking (unique constraint)
+    // Handle Unique Constraint Violation (Just in case race condition occurs)
     if (error.code === "23505") {
-      return res.status(409).json({
-        message: "This time slot is already booked",
-      });
+      return res
+        .status(409)
+        .json({ message: "This time slot is already booked" });
     }
-
-    res.status(500).json({
-      message: "Failed to create booking",
-    });
+    res.status(500).json({ message: "Failed to create booking" });
   }
 };
 
 /**
- * GET ALL BOOKINGS (Dashboard)
+ * GET BOOKINGS
+ * ------------
+ * Fetches bookings for the dashboard. Supports filtering (upcoming vs past).
  */
 const getBookings = async (req, res) => {
   try {
-    const { filter } = req.query; // optional: upcoming | past
+    const { filter } = req.query; // 'upcoming' or 'past'
 
     let baseQuery = `
-      SELECT 
-        b.*,
-        e.title AS event_title
+      SELECT b.*, e.title AS event_title
       FROM bookings b
       JOIN event_types e ON b.event_type_id = e.id
     `;
 
+    // Apply Filter Logic
     if (filter === "upcoming") {
       baseQuery += " WHERE booking_date >= CURRENT_DATE ";
     } else if (filter === "past") {
@@ -114,33 +114,26 @@ const getBookings = async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error("GET BOOKINGS ERROR:", error);
-
-    res.status(500).json({
-      message: "Failed to fetch bookings",
-    });
+    res.status(500).json({ message: "Failed to fetch bookings" });
   }
 };
 
 /**
  * CANCEL BOOKING
+ * --------------
+ * Soft deletes a booking by changing its status to 'cancelled'.
  */
 const cancelBooking = async (req, res) => {
   try {
     const { id } = req.params;
-
     await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [
       id,
     ]);
 
-    res.json({
-      message: "Booking cancelled successfully",
-    });
+    res.json({ message: "Booking cancelled successfully" });
   } catch (error) {
     console.error("CANCEL BOOKING ERROR:", error);
-
-    res.status(500).json({
-      message: "Failed to cancel booking",
-    });
+    res.status(500).json({ message: "Failed to cancel booking" });
   }
 };
 

@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react"; // 1. useCallback import kiya
 import api from "../../lib/api";
-import { Calendar, User, Clock, Ban, CheckCircle } from "lucide-react"; // Filter icon hata diya
+import { Calendar, User, Clock, Ban, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { format, parseISO } from "date-fns";
+import { usePageTitle } from "../../hooks/usePageTitle";
 
 export default function Bookings() {
+  usePageTitle("Bookings");
+
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("upcoming");
@@ -15,11 +18,9 @@ export default function Bookings() {
     { id: "cancelled", label: "Canceled" },
   ];
 
-  useEffect(() => {
-    fetchBookings();
-  }, [filter]);
-
-  const fetchBookings = async () => {
+  // --- 2. FIXED FETCH FUNCTION ---
+  // useCallback use kiya taaki function stable rahe aur infinite loop na ho
+  const fetchBookings = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get(`/bookings?filter=${filter}`);
@@ -30,12 +31,16 @@ export default function Bookings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]); // Yeh function tabhi change hoga jab 'filter' change hoga
+
+  // --- 3. UPDATED USEEFFECT ---
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]); // Ab hum safe tarike se function ko dependency bana sakte hain
 
   const handleCancel = async (id) => {
     if (!confirm("Are you sure you want to cancel this booking?")) return;
 
-    // Optimistic Update: List se turant hatao
     setBookings((prev) => prev.filter((b) => b.id !== id));
 
     try {
@@ -44,23 +49,23 @@ export default function Bookings() {
     } catch (err) {
       console.error(err);
       toast.error("Failed to cancel");
-      fetchBookings(); // Fail hua toh wapas lao
+      fetchBookings();
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-gray-800">
-      {/* --- HEADER --- */}
+    <div className="min-h-screen font-sans text-white bg-black selection:bg-gray-800">
+      {/* Header Section */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight text-white">
           Bookings
         </h1>
-        <p className="text-gray-500 mt-1 text-sm">
+        <p className="mt-1 text-sm text-gray-500">
           See upcoming and past events booked through your event type links.
         </p>
       </div>
 
-      {/* --- TABS ONLY (Filter Button Removed) --- */}
+      {/* Filter Tabs */}
       <div className="mb-6">
         <div className="flex flex-wrap gap-2">
           {tabs.map((tab) => (
@@ -79,30 +84,28 @@ export default function Bookings() {
         </div>
       </div>
 
-      {/* --- BOOKINGS LIST --- */}
+      {/* Bookings List */}
       <div className="border border-gray-800 rounded-lg min-h-[400px] bg-[#0C0C0C] relative overflow-hidden">
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+            <div className="w-6 h-6 border-b-2 border-white rounded-full animate-spin"></div>
           </div>
         ) : bookings.length > 0 ? (
-          // --- LIST VIEW ---
           <div className="divide-y divide-gray-800">
             {bookings.map((booking) => (
               <div
                 key={booking.id}
                 className="p-4 hover:bg-[#111] transition-colors flex flex-col md:flex-row justify-between items-center gap-4"
               >
-                {/* Left: Info */}
-                <div className="flex gap-4 w-full items-center">
-                  {/* Date Box */}
+                {/* Left Info */}
+                <div className="flex items-center w-full gap-4">
                   <div className="flex flex-col items-center justify-center h-12 w-12 rounded border border-gray-800 bg-[#161616] shrink-0">
                     <span className="text-[10px] text-gray-500 font-bold uppercase">
                       {booking.booking_date
                         ? format(parseISO(booking.booking_date), "MMM")
                         : ""}
                     </span>
-                    <span className="text-lg font-bold text-white leading-none">
+                    <span className="text-lg font-bold leading-none text-white">
                       {booking.booking_date
                         ? format(parseISO(booking.booking_date), "dd")
                         : ""}
@@ -110,10 +113,10 @@ export default function Bookings() {
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-white text-sm">
+                    <h3 className="text-sm font-semibold text-white">
                       {booking.event_title}
                     </h3>
-                    <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <User className="w-3 h-3" /> {booking.booker_name}
                       </span>
@@ -126,7 +129,7 @@ export default function Bookings() {
                   </div>
                 </div>
 
-                {/* Right: Actions */}
+                {/* Right Actions */}
                 <div className="shrink-0">
                   {filter === "upcoming" && (
                     <button
@@ -151,15 +154,14 @@ export default function Bookings() {
             ))}
           </div>
         ) : (
-          // --- EMPTY STATE ---
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
             <div className="w-16 h-16 bg-[#161616] rounded-full flex items-center justify-center mb-4 border border-gray-800">
               <Calendar className="w-8 h-8 text-gray-500" strokeWidth={1.5} />
             </div>
-            <h3 className="text-white font-semibold text-lg">
+            <h3 className="text-lg font-semibold text-white">
               No {filter} bookings
             </h3>
-            <p className="text-gray-500 text-sm mt-1 max-w-xs">
+            <p className="max-w-xs mt-1 text-sm text-gray-500">
               You have no {filter} bookings. Your {filter} bookings will show up
               here.
             </p>
